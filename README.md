@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/mindspore-lab/mindnlp/master/assets/mindnlp_logo.png" width="400" alt="MindNLP Logo"/>
-</p>
-
 <h1 align="center">MindNLP</h1>
 
 <p align="center">
@@ -13,14 +9,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mindspore-lab/mindnlp/stargazers">
-    <img alt="GitHub stars" src="https://img.shields.io/github/stars/mindspore-lab/mindnlp?style=for-the-badge&logo=github&color=yellow">
+  <a href="https://github.com/candle-org/mindnlp">
+    <img alt="GitHub stars" src="https://img.shields.io/github/stars/candle-org/mindnlp?style=for-the-badge&logo=github&color=yellow">
   </a>
   <a href="https://pypi.org/project/mindnlp/">
     <img alt="PyPI Downloads" src="https://img.shields.io/pypi/dm/mindnlp?style=for-the-badge&logo=pypi&color=blue">
   </a>
-  <a href="https://github.com/mindspore-lab/mindnlp/blob/master/LICENSE">
-    <img alt="License" src="https://img.shields.io/github/license/mindspore-lab/mindnlp?style=for-the-badge&color=green">
+  <a href="https://github.com/candle-org/mindnlp/blob/master/LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/candle-org/mindnlp?style=for-the-badge&color=green">
   </a>
 </p>
 
@@ -28,14 +24,14 @@
   <a href="https://mindnlp.cqu.ai/en/latest/">
     <img alt="Documentation" src="https://img.shields.io/badge/docs-latest-blue?style=flat-square">
   </a>
-  <a href="https://github.com/mindspore-lab/mindnlp/actions">
-    <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/mindspore-lab/mindnlp/ci_pipeline.yaml?style=flat-square&label=CI">
+  <a href="https://github.com/candle-org/mindnlp/actions">
+    <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/candle-org/mindnlp/ci_pipeline.yaml?style=flat-square&label=CI">
   </a>
-  <a href="https://github.com/mindspore-lab/mindnlp/pulls">
+  <a href="https://github.com/candle-org/mindnlp/pulls">
     <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square">
   </a>
-  <a href="https://github.com/mindspore-lab/mindnlp/issues">
-    <img alt="Issues" src="https://img.shields.io/github/issues/mindspore-lab/mindnlp?style=flat-square">
+  <a href="https://github.com/candle-org/mindnlp/issues">
+    <img alt="Issues" src="https://img.shields.io/github/issues/candle-org/mindnlp?style=flat-square">
   </a>
 </p>
 
@@ -170,7 +166,7 @@ For debugging, set `ACL_LAUNCH_BLOCKING=1` to force per-op synchronization.
 pip install mindnlp
 
 # From source (latest features)
-pip install git+https://github.com/mindspore-lab/mindnlp.git
+pip install git+https://github.com/candle-org/mindnlp.git
 ```
 
 <details>
@@ -220,8 +216,8 @@ MindNLP supports **all models** from HuggingFace Transformers and Diffusers. Her
 - 📖 [Documentation](https://mindnlp.cqu.ai)
 - 🚀 [Quick Start Guide](https://mindnlp.cqu.ai/quick_start)
 - 📝 [Tutorials](https://mindnlp.cqu.ai/tutorials/quick_start)
-- 💬 [GitHub Discussions](https://github.com/mindspore-lab/mindnlp/discussions)
-- 🐛 [Issue Tracker](https://github.com/mindspore-lab/mindnlp/issues)
+- 💬 [GitHub Discussions](https://github.com/candle-org/mindnlp/discussions)
+- 🐛 [Issue Tracker](https://github.com/candle-org/mindnlp/issues)
 
 ## 🤝 Contributing
 
@@ -229,7 +225,7 @@ We welcome contributions! See our [Contributing Guide](https://mindnlp.cqu.ai/co
 
 ```bash
 # Clone and install for development
-git clone https://github.com/mindspore-lab/mindnlp.git
+git clone https://github.com/candle-org/mindnlp.git
 cd mindnlp
 pip install -e ".[dev]"
 ```
@@ -237,8 +233,8 @@ pip install -e ".[dev]"
 ## 👥 Community
 
 <p align="center">
-  <a href="https://github.com/mindspore-lab/mindnlp/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=mindspore-lab/mindnlp" />
+  <a href="https://github.com/candle-org/mindnlp/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=candle-org/mindnlp" />
   </a>
 </p>
 
@@ -251,8 +247,8 @@ Join the **MindSpore NLP SIG** (Special Interest Group) for discussions, events,
 ## ⭐ Star History
 
 <p align="center">
-  <a href="https://star-history.com/#mindspore-lab/mindnlp&Date">
-    <img src="https://api.star-history.com/svg?repos=mindspore-lab/mindnlp&type=Date" alt="Star History Chart" width="600">
+  <a href="https://star-history.com/#candle-org/mindnlp&Date">
+    <img src="https://api.star-history.com/svg?repos=candle-org/mindnlp&type=Date" alt="Star History Chart" width="600">
   </a>
 </p>
 
@@ -268,7 +264,7 @@ MindNLP is released under the [Apache 2.0 License](LICENSE).
 @misc{mindnlp2022,
     title={MindNLP: Easy-to-use and High-performance NLP and LLM Framework Based on MindSpore},
     author={MindNLP Contributors},
-    howpublished={\url{https://github.com/mindspore-lab/mindnlp}},
+    howpublished={\url{https://github.com/candle-org/mindnlp}},
     year={2022}
 }
 ```
