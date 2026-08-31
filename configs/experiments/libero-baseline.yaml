@@ -1,0 +1,37 @@
+# Initial experiment manifest for a LeRobot policy evaluated in LIBERO.
+# LIBERO is installed separately; see docs/getting-started/installation.md.
+name: libero-baseline
+seed: 42
+output_dir: outputs
+
+dataset:
+  repo_id: lerobot/aloha_sim_insertion_human
+  revision: null
+  split: train
+  options: {}
+
+policy:
+  name: act
+  pretrained_model: null
+  revision: null
+  options: {}
+
+environment:
+  name: libero
+  task_suite: libero_spatial
+  task_ids: []
+  options: {}
+
+training:
+  steps: 10000
+  batch_size: 8
+  learning_rate: 0.0001
+  log_every: 100
+  checkpoint_every: 2000
+  options: {}
+
+evaluation:
+  episodes: 10
+  max_steps: null
+  record_video: true
+  options: {}

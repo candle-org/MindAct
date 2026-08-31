@@ -1,59 +1,26 @@
-# MindTorch v2 Agent Rules
-
-This file defines mandatory development order and verification gates for all contributors and coding agents working on `mindtorch_v2`.
+# MindAct agent guidance
 
 ## Scope
 
-- Applies to all changes under `src/mindtorch_v2/` and `tests/mindtorch_v2/`.
-- Priority: mechanism alignment with Torch behavior over adding new operator count.
+MindAct is a PyTorch- and Hugging Face-native toolkit for reproducible embodied-policy training and evaluation. The active package lives under `src/mindact`; historical MindNLP and MindTorch code is preserved on the `legacy` branch.
 
-## Non-Negotiable Order
+## Engineering rules
 
-For any new operator or API path in `mindtorch_v2`, follow this order:
+- Keep core imports lightweight. Never import `torch`, `lerobot`, or `libero` at module import time; use `mindact.utils.imports.require_module()` inside integration entry points.
+- Use `@runtime_checkable` protocols for integration boundaries instead of ABCs.
+- Use frozen, keyword-only dataclasses for configuration and result records.
+- Reject unknown configuration fields and validate values at construction time.
+- Preserve experiment provenance in JSON-compatible manifests.
+- Do not copy or reimplement upstream LeRobot or LIBERO internals in the core package.
 
-1. Register schema first in `src/mindtorch_v2/_dispatch/schemas.py`.
-2. Add or update contract tests.
-3. Register backend kernels (CPU/NPU/Meta/Autograd/Functionalize).
-4. Add or update functional/tensor API exports.
+## Validation
 
-Do not register a kernel before schema registration.
+From a Python 3.12+ environment with development dependencies installed:
 
-## Hard Invariant
+```bash
+pytest -q
+ruff check .
+python -m build
+```
 
-`OpRegistry.register_kernel` enforces schema-first registration.
-
-If schema is missing, registration must fail with:
-- `schema must be registered before kernel registration for op ...`
-
-Treat this as a design guardrail, not a temporary check.
-
-## Required Tests Before PR
-
-Every PR touching `mindtorch_v2` must pass:
-
-- `PYTHONPATH=src pytest -q tests/mindtorch_v2/contract/test_schema_registration_order.py`
-- `PYTHONPATH=src pytest -q tests/mindtorch_v2/contract/test_schema_coverage.py`
-
-Recommended full gate for mechanism changes:
-
-- `PYTHONPATH=src pytest -q tests/mindtorch_v2/contract`
-
-## PR Scope Rule
-
-- Keep PRs mechanism-focused and small.
-- Do not mix unrelated features in one PR.
-- If you add a new operator family, include only required schema/tests/registration/API for that family.
-
-## Torch Alignment Rule
-
-- Match Torch dispatch semantics first (schema binding, error class, dispatch path), then optimize implementation.
-- Error message wording can differ slightly unless a contract test requires exact match.
-
-## Worktree Rule
-
-- Always develop in a dedicated git worktree rebased on latest `ms/master`.
-- Rebase before opening PR to avoid conflict PRs.
-
-## Exclusions
-
-These rules do not require changing legacy v1 (`src/mindtorch/`) unless explicitly requested.
+Optional integration tests must skip cleanly when their dependencies are not installed. Do not commit checkpoints, rollout media, trajectory data, simulator caches, or experiment outputs.

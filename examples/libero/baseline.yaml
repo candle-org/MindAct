@@ -1,0 +1,24 @@
+# Keep runnable examples close to the corresponding integration.
+# The canonical copy is configs/experiments/libero-baseline.yaml.
+name: libero-baseline
+seed: 42
+output_dir: outputs
+
+dataset:
+  repo_id: lerobot/aloha_sim_insertion_human
+  split: train
+
+policy:
+  name: act
+
+environment:
+  name: libero
+  task_suite: libero_spatial
+
+training:
+  steps: 10000
+  batch_size: 8
+  learning_rate: 0.0001
+
+evaluation:
+  episodes: 10

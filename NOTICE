@@ -1,2 +1,32 @@
-MindNLP
-Copyright 2019-2020 Huawei Technologies Co., Ltd
+MindAct
+Copyright 2026 MindAct Contributors
+
+This product includes software developed by the MindAct project
+(https://github.com/candle-org/mindact).
+
+---
+
+Repository History:
+This repository was originally MindNLP (2019-2024), a MindSpore-based NLP
+library developed at Huawei Technologies Co., Ltd. The legacy codebase is
+preserved in the 'legacy' branch.
+
+Original MindNLP copyright notice:
+  MindNLP
+  Copyright 2019-2020 Huawei Technologies Co., Ltd
+  Licensed under Apache License 2.0
+
+The MindNLP project contained code from:
+- transformers (https://github.com/huggingface/transformers), Apache 2.0
+- diffusers (https://github.com/huggingface/diffusers), Apache 2.0
+
+---
+
+MindAct (2026-present) is a complete rewrite and does not contain code from
+the original MindNLP codebase. MindAct integrates with:
+
+- PyTorch (https://pytorch.org/), BSD 3-Clause
+- LeRobot (https://github.com/huggingface/lerobot), Apache 2.0
+- LIBERO (https://github.com/Lifelong-Robot-Learning/LIBERO), MIT License
+
+Users of MindAct should consult the licenses of these dependencies.

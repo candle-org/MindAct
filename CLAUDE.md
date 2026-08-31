@@ -1,305 +1,287 @@
-# MindNLP Project - Claude Code Configuration
+# MindAct Project - Claude Code Configuration
 
 ## Project Overview
 
-MindNLP is a NLP/LLM library based on MindSpore, aiming to support HuggingFace Transformers and Diffusers on Ascend/GPU/CPU devices.
+MindAct is a PyTorch and Hugging Face native training and evaluation toolkit for embodied policies. It provides reproducible experiment tracking for imitation learning on desktop manipulation tasks, integrating LeRobot datasets/policies with LIBERO simulation benchmarks.
 
 ## Directory Structure
 
 ```
-mindnlp/
+mindnlp/  (repository root)
 ├── .claude/
-│   ├── settings.json          # Permissions and hooks configuration
-│   ├── agents/
-│   │   ├── test-runner.md     # Test execution agent
-│   │   ├── code-reviewer.md   # Code review agent
-│   │   └── git-agent.md       # Git operations agent
-│   ├── hooks/
-│   │   ├── validate-command.sh    # Pre-execution command validation
-│   │   └── post-edit-check.sh     # Post-edit code quality check
-│   └── logs/
-│       └── session-history.md # Historical session logs
+│   ├── settings.json
+│   └── projects/
 ├── src/
-│   ├── mindnlp/               # MindNLP source code (editable)
-│   ├── mindtorch/             # MindTorch v1 source code (editable)
-│   └── mindtorch_v2/          # MindTorch v2 source code (editable)
+│   └── mindact/
+│       ├── cli/              # Command-line interface
+│       ├── configs/          # Configuration schemas
+│       ├── datasets/         # Dataset adapter protocols
+│       ├── envs/             # Environment adapter protocols
+│       ├── evaluation/       # Evaluation protocols
+│       ├── experiments/      # Manifest and artifact management
+│       ├── integrations/     # Lazy loading wrappers for lerobot/libero
+│       ├── policies/         # Policy adapter protocols
+│       ├── training/         # Training protocols
+│       └── utils/            # Optional import handling
+├── configs/
+│   ├── experiments/          # YAML experiment configurations
+│   └── README.md
+├── examples/
+│   └── libero/               # LIBERO integration examples
 ├── tests/
-│   ├── run_test.py            # Test runner (mindtorch v1)
-│   ├── run_test_v2.py         # Test runner (mindtorch v2, uses torch_proxy)
-│   └── transformers/          # HuggingFace transformers tests (read-only)
-│       └── tests/models/      # Model-specific tests
-└── CLAUDE.md                  # This file
+│   ├── unit/                 # Unit tests for core modules
+│   └── integration/          # Integration tests with optional deps
+├── docs/
+│   ├── getting-started/
+│   ├── concepts/
+│   ├── guides/
+│   └── contributing.md
+├── benchmarks/               # Performance benchmarks
+├── pyproject.toml            # PEP 621 package metadata
+├── README.md
+├── CLAUDE.md                 # This file
+├── LICENSE
+└── NOTICE
 ```
 
-## Current Status (as of 2026-02-06)
+## Current Status (as of 2026-08-31)
 
-### mindtorch v1
-- Tested on A-class and Qwen model families
-- Known limitations: Clone kernel, meta device, model loading issues
-- PRs: #2392, #2393
+**Version**: 0.1.0 (skeleton release)  
+**Branch**: feature/mindact-v0.1 (active development)  
+**Legacy branch**: legacy (preserves old MindNLP/MindTorch code)
 
-### mindtorch_v2
-| Model | Architecture | Pass Rate | Status |
-|-------|-------------|-----------|--------|
-| Albert | Encoder | 98.2% (54/55) | Production-ready |
-| BERT | Encoder | 79.1% (110/139) | Good |
-| GPT-2 | Decoder | 44.3% (62/140) | Functional (non-generation) |
+### Implemented
 
-**Remaining gaps** (priority order):
-1. Text generation utilities (`generate()`, beam search, sampling)
-2. Gradient checkpointing (`torch.utils.checkpoint`)
-3. Model serialization (SafeTensors edge cases, tied weights)
-4. Model offloading (CPU/disk)
+- Protocol-based adapter interfaces (datasets, policies, environments, trainers, evaluators)
+- Typed configuration system with YAML serialization
+- Experiment provenance tracking (manifests + artifacts)
+- Optional dependency handling (torch, lerobot, libero as extras)
+- CLI skeleton with config validation
+- Example YAML configurations
+- Unit tests and skip-clean optional integration smoke tests
+- MkDocs documentation skeleton and contributor guide
+- Python 3.12/3.13 CI for tests, linting, and package builds
 
-> Full session history: `.claude/logs/session-history.md`
+### Not Yet Implemented
+
+- Training loop (Trainer protocol implementation)
+- Evaluation loop (Evaluator protocol implementation)
+- LeRobot dataset adapter
+- LeRobot policy adapter
+- LIBERO environment adapter
+- Checkpoint loading/saving
+- Metrics logging
 
 ---
 
-## Multi-Agent System
+## Core Design Principles
 
-### Agent 1: Test Runner (`test-runner`)
+### 1. Protocol-Based Architecture
 
-**Purpose**: Execute tests, analyze failures, and fix bugs automatically.
-**Location**: `.claude/agents/test-runner.md`
+**CRITICAL**: All integration boundaries use `@runtime_checkable Protocol` from `typing`, not ABC or concrete base classes.
 
-**Usage**:
-```
-Use the Task tool with subagent_type="general-purpose" and reference the test-runner agent instructions.
+- **Why**: Allows external libraries to satisfy MindAct contracts without subclassing
+- **Example**: LeRobot policies can be wrapped as `PolicyAdapter` without modification
+- **Rule**: Never require inheritance from MindAct base classes
 
-Example prompt:
-"Following the test-runner agent guidelines in .claude/agents/test-runner.md,
-run the test file tests/transformers/tests/models/bert/test_modeling_bert.py
-and fix any failures."
-```
+```python
+from typing import Protocol, runtime_checkable
 
-**Workflow**:
-1. Activate conda: `source ~/miniconda3/bin/activate mindnlp`
-2. Run: `python tests/run_test.py -vs {test_file}` (v1) or `python tests/run_test_v2.py -vs {test_file}` (v2)
-3. Analyze test output for failures
-4. Locate bug source in `./src/mindnlp/`, `./src/mindtorch/`, or `./src/mindtorch_v2/`
-5. Apply targeted fixes
-6. Re-run tests to verify
-
-### Agent 2: Code Reviewer (`code-reviewer`)
-
-**Purpose**: Scan and analyze code for quality, security, and best practices.
-**Location**: `.claude/agents/code-reviewer.md`
-
-**Usage**:
-```
-Use the Task tool with subagent_type="general-purpose" and reference the code-reviewer agent instructions.
-
-Example prompt:
-"Following the code-reviewer agent guidelines in .claude/agents/code-reviewer.md,
-review the changes in src/mindnlp/transformers/models/bert/modeling_bert.py"
+@runtime_checkable
+class PolicyAdapter(Protocol):
+    """Contract for policy implementations."""
+    name: str
+    revision: str | None
+    
+    def predict(self, observation: dict[str, Any]) -> dict[str, Any]: ...
+    def load(self, checkpoint: str | Path) -> None: ...
 ```
 
-### Agent 3: Git Agent (`git-agent`)
+### 2. Optional Dependencies
 
-**Purpose**: Handle git operations including push to origin and pull from upstream.
-**Location**: `.claude/agents/git-agent.md`
+**CRITICAL**: MindAct core has ZERO required dependencies except numpy and pyyaml. All ML frameworks are optional extras.
 
-**Usage**:
+- **Never** import `torch`, `lerobot`, or `libero` at module level
+- **Always** use `require_module()` from `mindact.utils.imports` at runtime
+- **Rationale**: Users can install only what they need; config validation works without PyTorch
+
+```python
+# BAD: Eager import
+import torch
+from lerobot import Dataset
+
+# GOOD: Lazy loading
+def load_lerobot_dataset(config: DatasetConfig):
+    lerobot = require_module("lerobot", feature="LeRobot dataset loading")
+    return lerobot.Dataset(config.source, split=config.split)
 ```
-Use the Task tool with subagent_type="general-purpose" and reference the git-agent instructions.
 
-Example prompt:
-"Following the git-agent guidelines in .claude/agents/git-agent.md,
-push the current changes to origin and then pull latest from ms master."
+### 3. Frozen Dataclasses for All Configurations
+
+**CRITICAL**: All configuration and result objects are frozen dataclasses. No mutable state.
+
+- **Why**: Prevents accidental modification after validation; enables safe caching
+- **Rule**: Use `@dataclass(frozen=True, kw_only=True)` for all configs and results
+- **Exception**: None
+
+```python
+from dataclasses import dataclass
+
+@dataclass(frozen=True, kw_only=True)
+class TrainingConfig:
+    """Training hyperparameters."""
+    steps: int
+    batch_size: int
+    learning_rate: float
+    checkpoint_every: int
 ```
+
+### 4. Experiment Provenance
+
+**CRITICAL**: Every training run generates a manifest tracking exact dataset/policy/checkpoint/evaluation lineage.
+
+- **Manifest location**: `experiments/<run-id>/manifest.json`
+- **Required fields**: experiment name, seed, dataset (source, revision, split), policy (architecture, checkpoint), training config, evaluation config, run_id, timestamp
+- **Rule**: Manifests are write-once, never modified after creation
+- **Format**: JSON for machine readability, YAML for human-editable configs
+
+---
+
+## Development Workflow
+
+### Branch Strategy
+
+- **master**: Stable releases (currently empty, waiting for v0.1 commit)
+- **legacy**: Old MindNLP/MindTorch code (read-only archive)
+- **feature/mindact-v0.1**: Current development branch
+- **Feature branches**: `feature/<name>` for new features
+
+### Git Remotes
+
+- **origin**: Your fork/development repository (push target)
+- **ms**: Upstream repository (pull source, if applicable)
+
+### Pull Request Workflow
+
+When creating PRs:
+
+1. Rebase onto target branch (master or feature/mindact-v0.1)
+2. Squash all commits into ONE commit with a descriptive message
+3. Push with `--force-with-lease` after rebase
+4. Create PR with clear description of changes
+
+### Testing
+
+```bash
+# Activate environment
+source ~/miniconda3/bin/activate mindnlp  # or your preferred env
+
+# Run unit tests (no optional deps required)
+pytest tests/unit/ -v
+
+# Run integration tests (requires torch, lerobot, libero)
+pytest tests/integration/ -v
+
+# Run all tests
+pytest -v
+```
+
+### Code Quality
+
+- **Type hints**: All public functions must have full type annotations
+- **Docstrings**: NumPy style for all public APIs
+- **Linting**: `ruff check src/ tests/`
+- **Formatting**: `ruff format src/ tests/`
 
 ---
 
 ## Important Constraints
 
-### Core Design Principle: No Transformers-Specific Customization
+### For All Code Changes
 
-**CRITICAL**: MindTorch (both v1 and v2) must remain a **general-purpose PyTorch compatibility layer**.
+- **Never** add eager imports of optional dependencies
+- **Never** use mutable configuration objects
+- **Never** skip manifest generation in training runs
+- **Always** validate YAML configs against typed schemas before use
+- **Always** preserve provenance (dataset revision, policy checkpoint, config)
 
-- **NEVER** add transformers-specific hacks, workarounds, or special cases to mindtorch code
-- **NEVER** check for `transformers` or model-specific classes in mindtorch implementations
-- All fixes must be generic PyTorch API implementations, not transformers accommodations
-- If a test fails due to transformers-specific behavior, document it as "not supported" rather than adding special cases
+### For Integration Code
 
-### Core Design Principle: mindtorch_v2 is Fully Independent
+- **LeRobot integration**: Lives in `src/mindact/integrations/lerobot.py`
+- **LIBERO integration**: Lives in `src/mindact/integrations/libero.py`
+- **Rule**: Integration modules contain ONLY lazy loading wrappers, not adapter implementations
+- **Adapter implementations**: Live in `src/mindact/datasets/`, `src/mindact/policies/`, `src/mindact/envs/`
 
-**CRITICAL**: mindtorch_v2 is completely independent of MindSpore and PyTorch. It must **NEVER** import or depend on either.
+### For Configuration Changes
 
-- **NEVER** import `mindspore`, `mindspore.ops`, `mindspore.mint`, or any mindspore submodule in mindtorch_v2 code
-- **NEVER** import `torch` or any PyTorch module in mindtorch_v2 code
-- All computation must be implemented via the internal dispatch mechanism and ACLNN/ACL C bindings (ctypes)
-- The only external dependencies allowed are: `numpy`, `ctypes`, and the Python standard library
-
-### For Test Runner Agent
-- Only modify files in `./src/mindnlp/`, `./src/mindtorch/`, or `./src/mindtorch_v2/`
-- **NEVER** modify test files in `./tests/transformers/`
-- Always re-run tests after fixes
-
-### For Code Reviewer Agent
-- Read-only access
-- Generate reports, don't modify code
-
-### For Git Agent
-- Never force push to main/master directly
-- Never reset commits
-- Always pull before pushing
-- Report conflicts, don't auto-resolve
-- Exception: `--force-with-lease` is allowed after rebase during PR creation (see PR workflow below)
-
-### For Pull Request Creation (MANDATORY)
-
-When asked to create a PR, **ALWAYS** follow these steps in order:
-
-1. **Rebase onto upstream ms/master**:
-   ```bash
-   git fetch ms
-   git rebase ms/master
-   ```
-
-2. **Squash all commits into ONE single commit**:
-   ```bash
-   git reset --soft ms/master
-   git commit -m "commit message"
-   ```
-
-3. **Push to origin** (force-with-lease is required after rebase):
-   ```bash
-   git push -u origin <branch-name> --force-with-lease
-   ```
-
-4. **Create PR to ms remote**:
-   ```bash
-   gh pr create --repo mindspore-lab/mindnlp --base master --head lvyufeng:<branch-name>
-   ```
-
-**Key Rules**:
-- Each PR must contain exactly ONE commit
-- The commit must be rebased on top of the latest ms/master
-- Use `--force-with-lease` (not `--force`) after rebasing
+- **Never** add fields to config schemas without default values (breaks existing YAMLs)
+- **Always** use frozen dataclasses, not plain dicts or Pydantic models
+- **Validation**: Happens in `__post_init__` methods, not external validators
 
 ---
 
-## Git Remotes Configuration
+## CLI Commands
 
-- **origin**: Your fork/development repository (push target)
-- **ms**: Upstream MindSpore repository (pull source)
+### Current
 
----
-
-## Test Execution
-
-### Prerequisites
-1. Activate conda environment:
 ```bash
-source ~/miniconda3/bin/activate mindnlp
+# Validate experiment configuration
+mindact config-check <yaml-path>
 ```
 
-2. Ensure transformers tests are on matching version:
+### Planned
+
 ```bash
-cd tests/transformers
-git checkout tags/v4.57.5 -b v4.57.5-branch
+# Train a policy
+mindact train <yaml-path> [--output-dir DIR]
+
+# Evaluate a checkpoint
+mindact eval <checkpoint-path> --config <yaml-path> [--episodes N]
+
+# List available datasets
+mindact datasets list [--source lerobot|huggingface]
+
+# List available policies
+mindact policies list
+
+# Show experiment manifest
+mindact manifest show <run-id>
 ```
-
-### Run Tests
-
-mindtorch v1:
-```bash
-python tests/run_test.py -vs {test_file_path}
-```
-
-mindtorch v2:
-```bash
-python tests/run_test_v2.py -vs {test_file_path}
-```
-
-Example:
-```bash
-python tests/run_test.py -vs tests/transformers/tests/models/bert/test_modeling_bert.py::BertModelTest::test_model
-```
-
----
-
-## mindtorch_v2 Development Rules
-
-### CRITICAL: mindtorch_v2 Has Zero External Dependencies
-
-mindtorch_v2 is fully independent. It does NOT depend on MindSpore or PyTorch.
-
-- **NEVER** import `mindspore`, `mindspore.ops`, `mindspore.mint`, `mindspore.Tensor`, or any mindspore module
-- **NEVER** import `torch` or any PyTorch module
-- **NEVER** use PyBoost primitives or `gen_ops_prim` — these are MindSpore APIs
-- All NPU computation is done via direct ACLNN C library calls through `ctypes`
-- All CPU computation is done via `numpy` or pure Python
-- The only allowed dependencies are: `numpy`, `ctypes`, and the Python standard library
-
-### CRITICAL: Kernel Implementation Priority
-
-For GPU/NPU devices, NEVER use numpy for computation. Follow this priority order:
-
-1. **ACLNN kernels** (direct ctypes bindings to `libopapi.so`) - For NPU/Ascend operations
-2. **Composite of existing kernels** - Build complex ops from simpler dispatched ops
-3. **NumPy fallback** - ONLY for CPU backend
-
-### CRITICAL: NPU Must Prefer Large ACLNN Kernels Over Composite Small Ops
-
-**MANDATORY**: When an ACLNN large kernel exists for an operation, you **MUST** use it directly instead of compositing multiple small ops via dispatch.
-
-- **Check `_backends/npu/aclnn.py` FIRST** before implementing any NPU op as a composite
-- If `aclnn<OpName>` bindings exist (or can be added from the ACLNN C library headers), use them
-- Composite small-op implementations are **only acceptable** when no ACLNN large kernel is available
-- After merging any PR that adds composite NPU ops, a **follow-up PR must be created** to replace them with ACLNN large kernels wherever possible
-- This rule exists because compositing small ops on NPU incurs significant kernel launch overhead and prevents hardware-level fusion
-
-**Example — DO this:**
-```python
-# Use the single ACLNN large kernel
-aclnn.mean(input_ptr, out_ptr, shape, stride, dtype, dims, keepdim, ...)
-```
-
-**Example — Do NOT do this (when large kernel exists):**
-```python
-# BAD: compositing small ops when aclnnMean is available
-sum_result = dispatch("sum", "npu", a, dim=dim, keepdim=keepdim)
-count = tensor(float(n), device=a.device)
-result = dispatch("div", "npu", sum_result, count)
-```
-
-### Ascend NPU Backend Migration Guide
-
-When adding support for a new device (e.g., migrating from CPU to Ascend):
-
-1. **Create `<device>.py`**: Register ops using `@register_op("op_name", DispatchKey.Backend_<Device>)`
-2. **Update `configs.py`**: Detect device from MindSpore context
-3. **Update `__init__.py`**: Conditionally import backend
-
-**Device naming convention**:
-- Use `"npu"` as device.type (matches torch_npu convention)
-- MindSpore uses `"Ascend"` for context and `.set_device()`
-- Dispatch keys: `DispatchKey.Backend_Ascend`
-
----
-
-## Common MindSpore vs PyTorch Patterns
-
-| PyTorch | MindSpore |
-|---------|-----------|
-| `torch.tensor()` | `mindspore.Tensor()` |
-| `x.cuda()` | Context-based device |
-| `x.view(-1, 10)` | `x.view((-1, 10))` |
-| `x.float()` | `x.astype(mindspore.float32)` |
-| `torch.no_grad()` | `ops.stop_gradient()` |
-
----
-
-## Hooks
-
-- **Pre-Tool**: `validate-command.sh` - Blocks dangerous bash commands
-- **Post-Tool**: `post-edit-check.sh` - Checks for common code issues after edits
 
 ---
 
 ## Troubleshooting
 
-- **Tests not running**: Check MindSpore installation, verify device context, check PYTHONPATH, ensure conda env is activated
-- **Version mismatch**: `cd tests/transformers && git checkout tags/v4.57.5`
-- **Git push fails**: Check push access, uncommitted changes, branch existence on remote
+### Import Errors
+
+- **ModuleNotFoundError for torch/lerobot/libero**: Install missing extras with `pip install -e ".[torch,lerobot,libero]"`
+- **Import fails without helpful message**: Check `require_module()` call includes `feature=` parameter
+
+### Configuration Errors
+
+- **ConfigError during YAML load**: Check YAML syntax, required fields, and value types
+- **Dataclass FrozenInstanceError**: Don't try to modify config after creation; create new config instead
+
+### Git Issues
+
+- **Detached HEAD**: Check out a branch with `git checkout feature/mindact-v0.1`
+- **Merge conflicts**: MindAct is fresh; conflicts should only occur during rebases onto master
+
+---
+
+## External Resources
+
+- **LeRobot**: https://github.com/huggingface/lerobot
+- **LIBERO**: https://github.com/Lifelong-Robot-Learning/LIBERO
+- **PyTorch**: https://pytorch.org/docs/stable/index.html
+- **Hugging Face Hub**: https://huggingface.co/docs/hub/index
+
+---
+
+## Repository History
+
+This repository was originally [MindNLP](https://github.com/mindspore-lab/mindnlp), a MindSpore-based NLP library for Ascend/GPU/CPU. The legacy codebase (including MindTorch v1/v2) is preserved in the `legacy` branch at commit b288bacf.
+
+MindAct represents a complete product pivot to embodied AI, using PyTorch and Hugging Face as the native stack. The repository was retained to preserve stars (920) and community presence while changing direction entirely.
+
+**Important**: Old MindNLP/MindTorch rules, constraints, and workflows do NOT apply to MindAct development.

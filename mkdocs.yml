@@ -1,174 +1,52 @@
-site_name: MindNLP Docs
-repo_url: https://github.com/mindspore-lab/mindnlp
-repo_name: mindspore-lab/mindnlp
-copyright: Copyright &copy; 2022 - 2025 MindSpore Lab and CQU NLP Team.
-
-nav:
-  - Home: index.md
-  - Quick Start: quick_start.md
-  - Tutorials:
-      - Quick Start: tutorials/quick_start.md
-      - Data Preprocess: tutorials/data_preprocess.md
-      - Use Trainer: tutorials/use_trainer.md
-      - PEFT: tutorials/peft.md
-      - Use Mirror: tutorials/use_mirror.md
-  - Supported Models: supported_models.md
-  - How-To Contribute:  contribute.md
-  - API Reference:
-      - Data: api/data.md
-      - Dataset:
-          - api/dataset/index.md
-          - load_dataset: api/dataset/load_dataset.md
-          - BaseMapFunction: api/dataset/BaseMapFunction.md
-          - transforms: api/dataset/transforms.md
-
-      - Inference:
-          - api/inference.md
-          - api/inference/index.md
-          - engine: api/inference/engine/index.md
-          - layers: api/inference/layers/index.md
-          - models: api/inference/models/index.md
-          - utils: api/inference/utils/index.md
-      - Patch:
-          - api/patch/index.md
-          - transformers: api/patch/transformers/index.md
-          - diffusers: api/patch/diffusers/index.md
-          - safetensors: api/patch/safetensors/index.md
-          - utils: api/patch/utils/index.md
-      - Quantization:
-          - api/quant/index.md
-          - mindbnb: api/quant/mindbnb/index.md
-          - smooth_quant: api/quant/smooth_quant/index.md
-      - Wizard:
-          - api/wizard/index.md
-          - cooperate: api/wizard/cooperate/index.md
-          - ensemble: api/wizard/ensemble/index.md
-          - medusa: api/wizard/medusa/index.md
-          - merge: api/wizard/merge/index.md
-      - Utils: api/utils.md
-  - Notes:
-      - Change Log: notes/changelog.md
-      - Code of Conduct: notes/code_of_conduct.md
-      - FAQ: notes/faq.md
+site_name: MindAct
+site_description: Reproducible training and evaluation for embodied policies
+site_url: https://candle-org.github.io/mindact/
+repo_url: https://github.com/candle-org/mindact
+repo_name: candle-org/mindact
+edit_uri: edit/main/docs/
 
 theme:
   name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.suggest
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: black
-      accent: indigo
       toggle:
         icon: material/brightness-4
-        name: Switch to system preference
-  features:
-    # - navigation.instant  # see https://github.com/ultrabug/mkdocs-static-i18n/issues/62
-    - navigation.tracking
-    - navigation.tabs
-    - navigation.indexes
-    - navigation.top
-    - navigation.footer
-    - navigation.path
-    - toc.follow
-    - search.highlight
-    - search.share
-    - search.suggest
-    - content.action.view
-    - content.action.edit
-    - content.tabs.link
-    - content.code.copy
-    - content.code.select
-    - content.code.annotations
-  favicon: assets/favicon.ico
-  icon:
-    logo: logo
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: getting-started/installation.md
+  - Concepts:
+      - Architecture: concepts/architecture.md
+  - Guides:
+      - Training and evaluation: guides/training-and-evaluation.md
+  - Contributing: contributing.md
 
 markdown_extensions:
-  # Officially Supported Extensions
-  - abbr
   - admonition
   - attr_list
-  - def_list
-  - footnotes
-  - md_in_html
-  - meta
-  - sane_lists
-  - tables
-  - toc:
-      permalink: true
-  - wikilinks
-  # Third Party Extensions(Bundles, PyMdown Extensions)
-  - pymdownx.arithmatex:
-      generic: true
-  - pymdownx.betterem:
-      smart_enable: all
-  - pymdownx.caret
   - pymdownx.details
   - pymdownx.highlight
   - pymdownx.inlinehilite
-  - pymdownx.keys
-  - pymdownx.mark
-  - pymdownx.smartsymbols
-  - pymdownx.snippets
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
-  - pymdownx.tasklist:
-      custom_checkbox: true
-  - pymdownx.tilde
-
+  - pymdownx.tasklist
+  - toc:
+      permalink: true
 
 plugins:
   - search
-  - include-markdown
-  - mkdocstrings:
-      default_handler: python
-      handlers:
-        python:
-          options:
-            # Headings
-            show_root_heading: true
-            show_root_toc_entry: true
-            show_object_full_path: true
-            # Members
-            show_submodules: false
-            # Docstrings
-            docstring_section_style: spacy
-  - i18n:
-      docs_structure: folder
-      fallback_to_default: true
-      languages:
-        - locale: en
-          default: true
-          name: English
-        - locale: zh
-          default: false
-          name: 中文
-          nav_translations:
-            Home: 主页
-            Quick Start: 快速开始
-            Tutorials: 教程
-            Supported Models: 模型列表
-            Notes: 说明
-            How-To Contribute: 代码贡献
-            API Reference: API文档
-            Change Log: 更新日志
-            Code of Conduct: 行为准则
-            FAQ: 常见问题
-
-extra:
-  generator: false
-  social:
-    - icon: fontawesome/solid/paper-plane
-      link: mailto:lvyufeng@cqu.edu.cn
-    - icon: fontawesome/brands/github
-      link: https://github.com/mindspore-lab/mindnlp
-    - icon: fontawesome/brands/zhihu
-      link: https://www.zhihu.com/people/lu-yu-feng-46-1

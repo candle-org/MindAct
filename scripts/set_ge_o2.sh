@@ -1,1 +1,0 @@
-export MS_DEV_RUNTIME_CONF="ge_kernel:False"

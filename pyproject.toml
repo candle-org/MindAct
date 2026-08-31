@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mindact"
+version = "0.1.0"
+description = "A PyTorch and Hugging Face native training and evaluation toolkit for embodied policies"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.12"
+authors = [{ name = "MindAct contributors" }]
+keywords = [
+    "embodied-ai",
+    "robot-learning",
+    "manipulation",
+    "vision-language-action",
+    "pytorch",
+    "lerobot",
+    "libero",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=2.0,<2.3",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+torch = ["torch>=2.7,<2.12"]
+hub = ["huggingface-hub>=1.6,<2"]
+lerobot = [
+    "torch>=2.7,<2.12",
+    "lerobot>=0.6.1,<0.7",
+]
+libero = [
+    "torch>=2.7,<2.12",
+    "libero>=0.1.1,<0.2",
+]
+dev = [
+    "build>=1.2",
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+]
+
+[project.scripts]
+mindact = "mindact.cli.main:main"
+
+[project.urls]
+homepage = "https://github.com/candle-org/mindact"
+source = "https://github.com/candle-org/mindact"
+issues = "https://github.com/candle-org/mindact/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["mindact*"]
+
+[tool.setuptools.package-data]
+mindact = ["py.typed"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests/unit", "tests/integration"]
+addopts = "-ra"
+markers = [
+    "lerobot: requires the optional lerobot integration",
+    "libero: requires the optional libero simulation stack",
+    "slow: long-running training or rollout test",
+]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+target-version = "py312"
+extend-exclude = [".worktrees", "tests/transformers"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mindact"]
