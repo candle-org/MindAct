@@ -43,7 +43,16 @@ pip install -e ".[dev]"
 mindact config-check configs/experiments/libero-baseline.yaml
 ```
 
-`config-check` is the only command in v0.1. Training and evaluation commands arrive with their adapter implementations.
+```bash
+# Run the dependency-free evaluation smoke path
+mindact eval configs/experiments/libero-baseline.yaml \
+  --runner fake \
+  --run-id smoke-run \
+  --output-dir outputs \
+  --episodes 2
+```
+
+`config-check` validates a configuration, and `eval --runner fake` exercises the full evaluation lifecycle with built-in test doubles. Real LeRobot policies and LIBERO environments arrive with their adapter implementations; the fake runner is a contract smoke test, not a benchmark result.
 
 ### Configuration Format
 

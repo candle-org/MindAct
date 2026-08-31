@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from numbers import Real
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 import yaml
@@ -29,9 +32,24 @@ def _non_empty(value: str, field_name: str) -> None:
         raise ConfigError(f"'{field_name}' must be a non-empty string")
 
 
-def _positive(value: int | float, field_name: str) -> None:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+def _optional_string(value: str | None, field_name: str) -> None:
+    if value is not None:
+        _non_empty(value, field_name)
+
+
+def _positive(value: Real, field_name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value) or value <= 0:
         raise ConfigError(f"'{field_name}' must be greater than zero")
+
+
+def _positive_int(value: int, field_name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ConfigError(f"'{field_name}' must be greater than zero")
+
+
+def _non_negative_int(value: int, field_name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ConfigError(f"'{field_name}' must be a non-negative integer")
 
 
 def _section(data: Mapping[str, Any], name: str) -> dict[str, Any]:
@@ -47,7 +65,36 @@ def _reject_unknown(data: Mapping[str, Any], allowed: set[str], section: str) ->
         raise ConfigError(f"unknown field(s) in '{section}': {', '.join(unknown)}")
 
 
-@dataclass(frozen=True, slots=True)
+def _freeze(value: Any, field_name: str) -> Any:
+    """Return a recursively immutable, YAML/JSON-compatible snapshot."""
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise ConfigError(f"'{field_name}' mapping keys must be strings")
+        return MappingProxyType({key: _freeze(item, f"{field_name}.{key}") for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item, f"{field_name}[]") for item in value)
+    if isinstance(value, (str, bool, int)) or value is None:
+        return value
+    if isinstance(value, float) and math.isfinite(value):
+        return value
+    raise ConfigError(f"'{field_name}' contains a value that is not YAML/JSON compatible")
+
+
+def _snapshot_options(value: Mapping[str, Any], field_name: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ConfigError(f"'{field_name}' must be a mapping")
+    return _freeze(value, field_name)
+
+
+def _thaw(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    return value
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DatasetConfig:
     """Dataset identity and loader-specific options."""
 
@@ -58,11 +105,12 @@ class DatasetConfig:
 
     def __post_init__(self) -> None:
         _non_empty(self.repo_id, "dataset.repo_id")
+        _optional_string(self.revision, "dataset.revision")
         _non_empty(self.split, "dataset.split")
-        object.__setattr__(self, "options", dict(self.options))
+        object.__setattr__(self, "options", _snapshot_options(self.options, "dataset.options"))
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class PolicyConfig:
     """Policy architecture or checkpoint identity."""
 
@@ -73,10 +121,12 @@ class PolicyConfig:
 
     def __post_init__(self) -> None:
         _non_empty(self.name, "policy.name")
-        object.__setattr__(self, "options", dict(self.options))
+        _optional_string(self.pretrained_model, "policy.pretrained_model")
+        _optional_string(self.revision, "policy.revision")
+        object.__setattr__(self, "options", _snapshot_options(self.options, "policy.options"))
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class EnvironmentConfig:
     """Evaluation environment and deterministic task selection."""
 
@@ -87,16 +137,19 @@ class EnvironmentConfig:
 
     def __post_init__(self) -> None:
         _non_empty(self.name, "environment.name")
+        if not isinstance(self.task_ids, (list, tuple)):
+            raise ConfigError("'environment.task_ids' must be a list")
         if any(
             isinstance(task_id, bool) or not isinstance(task_id, int) or task_id < 0
             for task_id in self.task_ids
         ):
             raise ConfigError("'environment.task_ids' must contain non-negative integers")
+        _optional_string(self.task_suite, "environment.task_suite")
         object.__setattr__(self, "task_ids", tuple(self.task_ids))
-        object.__setattr__(self, "options", dict(self.options))
+        object.__setattr__(self, "options", _snapshot_options(self.options, "environment.options"))
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class TrainingConfig:
     """Framework-neutral training controls."""
 
@@ -109,12 +162,12 @@ class TrainingConfig:
 
     def __post_init__(self) -> None:
         for name in ("steps", "batch_size", "log_every", "checkpoint_every"):
-            _positive(getattr(self, name), f"training.{name}")
+            _positive_int(getattr(self, name), f"training.{name}")
         _positive(self.learning_rate, "training.learning_rate")
-        object.__setattr__(self, "options", dict(self.options))
+        object.__setattr__(self, "options", _snapshot_options(self.options, "training.options"))
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class EvaluationConfig:
     """Rollout and reporting controls."""
 
@@ -124,13 +177,15 @@ class EvaluationConfig:
     options: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        _positive(self.episodes, "evaluation.episodes")
+        _positive_int(self.episodes, "evaluation.episodes")
         if self.max_steps is not None:
-            _positive(self.max_steps, "evaluation.max_steps")
-        object.__setattr__(self, "options", dict(self.options))
+            _positive_int(self.max_steps, "evaluation.max_steps")
+        if not isinstance(self.record_video, bool):
+            raise ConfigError("'evaluation.record_video' must be a boolean")
+        object.__setattr__(self, "options", _snapshot_options(self.options, "evaluation.options"))
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ExperimentConfig:
     """Complete configuration for one train-and-evaluate experiment."""
 
@@ -145,11 +200,23 @@ class ExperimentConfig:
 
     def __post_init__(self) -> None:
         _non_empty(self.name, "name")
-        if isinstance(self.seed, bool) or not isinstance(self.seed, int) or self.seed < 0:
-            raise ConfigError("'seed' must be a non-negative integer")
-        output_dir = Path(self.output_dir)
-        if not str(output_dir):
+        _non_negative_int(self.seed, "seed")
+        if not isinstance(self.dataset, DatasetConfig):
+            raise ConfigError("'dataset' must be a DatasetConfig")
+        if not isinstance(self.policy, PolicyConfig):
+            raise ConfigError("'policy' must be a PolicyConfig")
+        if not isinstance(self.environment, EnvironmentConfig):
+            raise ConfigError("'environment' must be an EnvironmentConfig")
+        if not isinstance(self.training, TrainingConfig):
+            raise ConfigError("'training' must be a TrainingConfig")
+        if not isinstance(self.evaluation, EvaluationConfig):
+            raise ConfigError("'evaluation' must be an EvaluationConfig")
+        if not isinstance(self.output_dir, (str, Path)) or not str(self.output_dir).strip():
             raise ConfigError("'output_dir' must not be empty")
+        try:
+            output_dir = Path(self.output_dir)
+        except TypeError as exc:
+            raise ConfigError("'output_dir' must be a path-like value") from exc
         object.__setattr__(self, "output_dir", output_dir)
 
     @classmethod
@@ -194,7 +261,7 @@ class ExperimentConfig:
             return cls(
                 name=data["name"],
                 seed=data.get("seed", 0),
-                output_dir=Path(data.get("output_dir", "outputs")),
+                output_dir=data.get("output_dir", "outputs"),
                 dataset=DatasetConfig(**dataset),
                 policy=PolicyConfig(**policy),
                 environment=EnvironmentConfig(**environment),
@@ -228,19 +295,19 @@ class ExperimentConfig:
                 "repo_id": self.dataset.repo_id,
                 "revision": self.dataset.revision,
                 "split": self.dataset.split,
-                "options": dict(self.dataset.options),
+                "options": _thaw(self.dataset.options),
             },
             "policy": {
                 "name": self.policy.name,
                 "pretrained_model": self.policy.pretrained_model,
                 "revision": self.policy.revision,
-                "options": dict(self.policy.options),
+                "options": _thaw(self.policy.options),
             },
             "environment": {
                 "name": self.environment.name,
                 "task_suite": self.environment.task_suite,
                 "task_ids": list(self.environment.task_ids),
-                "options": dict(self.environment.options),
+                "options": _thaw(self.environment.options),
             },
             "training": {
                 "steps": self.training.steps,
@@ -248,13 +315,13 @@ class ExperimentConfig:
                 "learning_rate": self.training.learning_rate,
                 "log_every": self.training.log_every,
                 "checkpoint_every": self.training.checkpoint_every,
-                "options": dict(self.training.options),
+                "options": _thaw(self.training.options),
             },
             "evaluation": {
                 "episodes": self.evaluation.episodes,
                 "max_steps": self.evaluation.max_steps,
                 "record_video": self.evaluation.record_video,
-                "options": dict(self.evaluation.options),
+                "options": _thaw(self.evaluation.options),
             },
         }
 

@@ -1,21 +1,46 @@
-"""Experiment provenance records.
-
-Manifests are deliberately plain JSON-compatible data so they can be inspected,
-compared and uploaded alongside checkpoints without requiring a tracking service.
-"""
+"""Experiment provenance records."""
 
 from __future__ import annotations
 
 import json
+import math
+import os
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 __all__ = ["ExperimentManifest"]
 
 
-@dataclass(frozen=True, slots=True)
+def _freeze(value: Any) -> Any:
+    """Take a recursively immutable JSON-compatible snapshot."""
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise ValueError("manifest mapping keys must be strings")
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float) and math.isfinite(value):
+        return value
+    if isinstance(value, float):
+        raise ValueError("manifest numeric values must be finite")
+    raise ValueError("manifest values must be JSON-compatible")
+
+
+def _thaw(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    return value
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ExperimentManifest:
     """Identity and lineage for one train/evaluate run."""
 
@@ -29,6 +54,7 @@ class ExperimentManifest:
     environment: Mapping[str, Any] = field(default_factory=dict)
     checkpoint: Mapping[str, Any] | None = None
     evaluation: Mapping[str, Any] | None = None
+    schema_version: int = 1
 
     def __post_init__(self) -> None:
         for name in ("run_id", "experiment_name"):
@@ -37,37 +63,69 @@ class ExperimentManifest:
                 raise ValueError(f"{name} must be a non-empty string")
         if isinstance(self.seed, bool) or not isinstance(self.seed, int) or self.seed < 0:
             raise ValueError("seed must be a non-negative integer")
-        object.__setattr__(self, "config", dict(self.config))
+        if (
+            isinstance(self.schema_version, bool)
+            or not isinstance(self.schema_version, int)
+            or self.schema_version < 1
+        ):
+            raise ValueError("schema_version must be a positive integer")
+        if self.code_revision is not None and (
+            not isinstance(self.code_revision, str) or not self.code_revision.strip()
+        ):
+            raise ValueError("code_revision must be a non-empty string or None")
+        object.__setattr__(self, "config", _freeze(self.config))
         for name in ("dataset", "policy", "environment"):
-            object.__setattr__(self, name, dict(getattr(self, name)))
+            object.__setattr__(self, name, _freeze(getattr(self, name)))
         for name in ("checkpoint", "evaluation"):
             value = getattr(self, name)
             if value is not None:
-                object.__setattr__(self, name, dict(value))
+                object.__setattr__(self, name, _freeze(value))
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-compatible representation."""
         return {
+            "schema_version": self.schema_version,
             "run_id": self.run_id,
             "experiment_name": self.experiment_name,
             "seed": self.seed,
             "code_revision": self.code_revision,
-            "config": dict(self.config),
-            "dataset": dict(self.dataset),
-            "policy": dict(self.policy),
-            "environment": dict(self.environment),
-            "checkpoint": None if self.checkpoint is None else dict(self.checkpoint),
-            "evaluation": None if self.evaluation is None else dict(self.evaluation),
+            "config": _thaw(self.config),
+            "dataset": _thaw(self.dataset),
+            "policy": _thaw(self.policy),
+            "environment": _thaw(self.environment),
+            "checkpoint": None if self.checkpoint is None else _thaw(self.checkpoint),
+            "evaluation": None if self.evaluation is None else _thaw(self.evaluation),
         }
 
     def write_json(self, path: str | Path) -> None:
-        """Write the manifest atomically enough for ordinary local runs."""
+        """Write this manifest once, without overwriting an existing file."""
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(
-            json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        if target.exists():
+            raise FileExistsError(f"manifest already exists: '{target}'")
+        if target.exists():
+            raise FileExistsError(f"manifest already exists: '{target}'")
+        payload = json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
+        descriptor, temporary = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent, text=True)
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(temporary, target)
+            except FileExistsError as exc:
+                raise FileExistsError(f"manifest already exists: '{target}'") from exc
+            finally:
+                Path(temporary).unlink(missing_ok=True)
+            directory_fd = os.open(target.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        except BaseException:
+            Path(temporary).unlink(missing_ok=True)
+            raise
 
     @classmethod
     def read_json(cls, path: str | Path) -> ExperimentManifest:
@@ -81,5 +139,5 @@ class ExperimentManifest:
             raise ValueError("experiment manifest must contain a JSON object")
         try:
             return cls(**data)
-        except TypeError as exc:
+        except (TypeError, ValueError) as exc:
             raise ValueError(f"invalid experiment manifest fields: {exc}") from exc

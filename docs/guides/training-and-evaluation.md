@@ -46,7 +46,58 @@ outputs/<run-id>/
 └── evaluation/
 ```
 
-A runner should write the manifest before training begins. This preserves the original provenance even if a process stops before producing a checkpoint.
+A runner should write the manifest before training begins. This preserves the original provenance even if a process stops before producing a checkpoint. Manifests are write-once: completed evaluation metrics are written to separate artifact files rather than replacing the manifest.
+
+## Dependency-free evaluation smoke test
+
+MindAct includes a small fake policy and environment so the evaluation lifecycle can be tested without installing PyTorch, LeRobot, or LIBERO:
+
+```bash
+mindact eval configs/experiments/libero-baseline.yaml \
+  --runner fake \
+  --run-id smoke-run \
+  --output-dir /tmp/mindact-outputs \
+  --episodes 2
+```
+
+The command creates `config.yaml`, `manifest.json`, `evaluation/results.json`, and `evaluation/episodes.jsonl`. Use a fixed `--run-id` when comparing two runs byte-for-byte; an existing run directory is never overwritten.
+
+The same runner is available as a Python API. Adapters are injected, so a real policy or simulator can be connected without changing experiment bookkeeping:
+
+```python
+from mindact import EvaluationRunner
+
+runner = EvaluationRunner(
+    config=config,
+    policy=policy_adapter,
+    environment_factory=lambda: environment_adapter,
+    run_id="run-001",
+)
+result = runner.evaluate()
+```
+
+Each episode receives `config.seed + episode_index`. The runner calls `reset(seed=...)`, applies actions until `done` or `evaluation.max_steps`, and always calls `close()` in a `finally` block. A final `info["success"]` value determines the episode success flag.
+
+The fake runner is a smoke path only; it does not represent a trained ACT policy or a LIBERO benchmark result. Real training and simulator adapters remain future work.
+
+## Artifact and provenance contract
+
+A completed run uses this layout:
+
+```text
+outputs/<run-id>/
+├── config.yaml                 # normalized input configuration
+├── manifest.json               # immutable run identity and lineage
+├── checkpoints/
+├── logs/
+└── evaluation/
+    ├── results.json            # aggregate metrics
+    └── episodes.jsonl          # one JSON object per episode
+```
+
+`manifest.json` records the dataset, policy, environment, seed, optional checkpoint, and paths to result artifacts. It is created before the first rollout and refuses to overwrite an existing file. Aggregate and per-episode results are independent files, allowing provenance to remain unchanged after evaluation completes.
+
+Artifact metadata must remain JSON-compatible. Large observations, images, and videos should be stored as separate files and referenced from episode metadata rather than embedded in the manifest.
 
 ## Dataset, policy, and environment boundaries
 
@@ -75,15 +126,13 @@ If an integration is not installed, MindAct raises an actionable `MissingOptiona
 
 ## Evaluation records
 
-An evaluator should associate every aggregate result with the training `run_id` and checkpoint used. Store machine-readable metrics under a checkpoint-specific directory, for example:
+Every aggregate result is associated with the run `run_id` and the checkpoint used, both recorded in `manifest.json`. Aggregate metrics live in `evaluation/results.json` and per-episode records in `evaluation/episodes.jsonl`, one JSON object per line:
 
-```text
-outputs/<run-id>/evaluation/final/
-├── results.json
-└── episodes/
+```json
+{"episode_id": "episode-0000", "seed": 40, "success": true, "reward": 1.0, "steps": 1, "truncated": false, "metadata": {}}
 ```
 
-Use `EvaluationResult.success_rate` for the standard success fraction and retain benchmark-specific metrics in `metrics`. Keep raw episode metadata in `metadata` or separate rollout files instead of embedding large arrays in the manifest.
+Use `EvaluationResult.success_rate` for the standard success fraction and retain benchmark-specific metrics in `metrics`. Keep raw episode metadata in `EpisodeRecord.metadata` or separate rollout files instead of embedding large arrays in the manifest.
 
 ## Reproducibility checklist
 
@@ -97,4 +146,4 @@ Before comparing two runs, verify:
 6. Evaluation episode count, task selection, and simulator options are unchanged.
 7. Code revision is recorded by the runner when the source is under Git.
 
-The v0.1 CLI only validates configurations. Training and simulator commands will be added once their integration contracts are implemented; users should not interpret the skeleton command as a completed training pipeline.
+The v0.1 CLI covers configuration validation and the fake evaluation path. A `train` command and real simulator adapters will be added once their integration contracts are implemented; the fake runner should not be interpreted as a completed training or benchmark pipeline.
