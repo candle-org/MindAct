@@ -6,10 +6,18 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
+from mindact.utils.records import (
+    freeze_value,
+    require_finite_number,
+    require_non_empty,
+    require_non_negative_int,
+    thaw_value,
+)
+
 __all__ = ["EpisodeResult", "EnvironmentAdapter"]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class EpisodeResult:
     """Outcome and metadata for one deterministic rollout."""
 
@@ -20,11 +28,22 @@ class EpisodeResult:
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not self.episode_id.strip():
-            raise ValueError("episode_id must not be empty")
-        if self.steps < 0:
-            raise ValueError("steps must not be negative")
-        object.__setattr__(self, "metadata", dict(self.metadata))
+        require_non_empty(self.episode_id, "episode_id")
+        if not isinstance(self.success, bool):
+            raise ValueError("success must be a boolean")
+        require_finite_number(self.reward, "reward")
+        require_non_negative_int(self.steps, "steps")
+        object.__setattr__(self, "metadata", freeze_value(self.metadata))
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-compatible representation."""
+        return {
+            "episode_id": self.episode_id,
+            "success": self.success,
+            "reward": self.reward,
+            "steps": self.steps,
+            "metadata": thaw_value(self.metadata),
+        }
 
 
 @runtime_checkable

@@ -6,10 +6,18 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
+from mindact.utils.records import (
+    freeze_value,
+    require_finite_number,
+    require_non_empty,
+    require_non_negative_int,
+    thaw_value,
+)
+
 __all__ = ["TrainResult", "Trainer"]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class TrainResult:
     """Summary returned by a training run and stored with its manifest."""
 
@@ -20,12 +28,27 @@ class TrainResult:
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not self.run_id.strip():
-            raise ValueError("run_id must not be empty")
-        if self.steps < 0:
-            raise ValueError("steps must not be negative")
-        object.__setattr__(self, "metrics", dict(self.metrics))
-        object.__setattr__(self, "metadata", dict(self.metadata))
+        require_non_empty(self.run_id, "run_id")
+        require_non_negative_int(self.steps, "steps")
+        if self.checkpoint is not None:
+            require_non_empty(self.checkpoint, "checkpoint")
+        frozen_metrics = freeze_value(self.metrics)
+        if not isinstance(frozen_metrics, Mapping):
+            raise ValueError("metrics must be a mapping")
+        for name, value in frozen_metrics.items():
+            require_finite_number(value, f"metrics.{name}")
+        object.__setattr__(self, "metrics", frozen_metrics)
+        object.__setattr__(self, "metadata", freeze_value(self.metadata))
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-compatible representation."""
+        return {
+            "run_id": self.run_id,
+            "steps": self.steps,
+            "checkpoint": self.checkpoint,
+            "metrics": thaw_value(self.metrics),
+            "metadata": thaw_value(self.metadata),
+        }
 
 
 @runtime_checkable

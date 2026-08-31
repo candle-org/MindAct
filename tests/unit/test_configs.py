@@ -4,7 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from mindact.configs import ConfigError, ExperimentConfig, TrainingConfig
+from mindact.configs import (
+    ConfigError,
+    DatasetConfig,
+    EvaluationConfig,
+    ExperimentConfig,
+    TrainingConfig,
+)
 
 EXAMPLE_CONFIG = Path(__file__).parents[2] / "configs/experiments/libero-baseline.yaml"
 
@@ -64,3 +70,53 @@ def test_config_is_immutable() -> None:
 
     with pytest.raises(AttributeError):
         config.name = "changed"  # type: ignore[misc]
+
+
+def test_boolean_is_not_accepted_as_positive_int() -> None:
+    with pytest.raises(ConfigError, match="training.batch_size.*greater than zero"):
+        TrainingConfig(steps=1, batch_size=True, learning_rate=0.1)  # type: ignore[arg-type]
+
+
+def test_non_finite_learning_rate_is_rejected() -> None:
+    with pytest.raises(ConfigError, match="training.learning_rate.*greater than zero"):
+        TrainingConfig(steps=1, batch_size=1, learning_rate=float("inf"))
+
+
+def test_empty_optional_string_is_rejected() -> None:
+    with pytest.raises(ConfigError, match="dataset.revision.*non-empty string"):
+        DatasetConfig(repo_id="demo", revision="  ")
+
+
+def test_non_boolean_record_video_is_rejected() -> None:
+    with pytest.raises(ConfigError, match="evaluation.record_video.*boolean"):
+        EvaluationConfig(record_video=1)  # type: ignore[arg-type]
+
+
+def test_nested_options_are_frozen_and_snapshotted() -> None:
+    source = {"nested": {"values": [1, 2]}}
+    config = DatasetConfig(repo_id="demo", options=source)
+
+    source["nested"]["values"].append(3)
+
+    assert config.options["nested"]["values"] == (1, 2)
+    with pytest.raises(TypeError):
+        config.options["nested"] = {}  # type: ignore[index]
+
+
+def test_non_serializable_option_value_is_rejected() -> None:
+    with pytest.raises(ConfigError, match="not YAML/JSON compatible"):
+        DatasetConfig(repo_id="demo", options={"handle": object()})
+
+
+def test_empty_output_dir_is_rejected() -> None:
+    with pytest.raises(ConfigError, match="output_dir.*must not be empty"):
+        ExperimentConfig.from_dict(
+            {
+                "name": "demo",
+                "output_dir": "",
+                "dataset": {"repo_id": "demo"},
+                "policy": {"name": "act"},
+                "environment": {"name": "libero"},
+                "training": {"steps": 1, "batch_size": 1, "learning_rate": 0.1},
+            }
+        )
