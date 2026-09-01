@@ -126,8 +126,14 @@ Test your installation:
 # Check CLI is available
 mindact --help
 
+# Check the local installation and optional integrations
+mindact doctor
+
 # Validate example configuration
 mindact config-check configs/experiments/libero-baseline.yaml
+
+# Run the dependency-free smoke evaluator
+mindact eval configs/experiments/libero-baseline.yaml --runner fake --episodes 1
 
 # Run unit tests (no optional deps required)
 pytest tests/unit/ -v
