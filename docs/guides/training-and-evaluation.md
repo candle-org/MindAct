@@ -112,7 +112,15 @@ This makes it possible to replace a storage backend or simulator without changin
 
 ## Optional integrations
 
-MindAct does not import LeRobot or LIBERO while importing the core package. Request the integration explicitly:
+MindAct does not import LeRobot or LIBERO while importing the core package. Use `mindact doctor` to inspect optional package availability without importing those packages, then request an integration explicitly:
+
+```bash
+mindact doctor
+```
+
+A `FOUND` result only means that a module is importable; it does not validate MuJoCo rendering, device execution, checkpoint access, or a complete simulator installation.
+
+Request the integration explicitly:
 
 ```python
 from mindact.integrations.lerobot import load_lerobot

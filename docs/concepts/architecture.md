@@ -263,13 +263,17 @@ class DatasetAdapter(Protocol):
 
 **Current commands:**
 - `mindact config-check` - Validate YAML configuration
+- `mindact doctor` - Report core and optional integration availability
+- `mindact eval --runner fake` - Run the dependency-free evaluation smoke path
+- `mindact manifest show` - Display experiment manifest
 
 **Planned commands:**
-- `mindact train` - Run training loop
-- `mindact eval` - Evaluate checkpoint
+- `mindact train` - Run training orchestration
+- `mindact eval --runner libero` - Evaluate a policy in a supported simulator
 - `mindact datasets list` - List available datasets
 - `mindact policies list` - List available policies
-- `mindact manifest show` - Display experiment manifest
+- `mindact compare` - Compare provenance and metrics across runs
+- `mindact manifest diff` - Display manifest differences
 
 ## Error Handling
 
