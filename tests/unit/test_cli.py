@@ -65,6 +65,24 @@ def test_doctor_report_is_json_safe() -> None:
     assert json.loads(json.dumps(report.to_dict()))["healthy"] is True
 
 
+def test_doctor_report_treats_missing_optional_packages_as_healthy() -> None:
+    report = DoctorReport(
+        checks=(
+            DiagnosticCheck(name="MindAct", status="OK", detail="0.1.0"),
+            DiagnosticCheck(name="LIBERO", status="MISSING", detail="install extra"),
+            DiagnosticCheck(name="Scope", status="INFO", detail="package checks only"),
+        )
+    )
+
+    assert report.healthy is True
+
+
+def test_doctor_report_flags_core_errors() -> None:
+    report = DoctorReport(checks=(DiagnosticCheck(name="MindAct", status="ERROR", detail="broken"),))
+
+    assert report.healthy is False
+
+
 def test_cli_manifest_show_accepts_manifest_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     manifest_path = make_manifest(tmp_path / "run-001")
 

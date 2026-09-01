@@ -46,8 +46,12 @@ class DoctorReport:
 
     @property
     def healthy(self) -> bool:
-        """Return whether all checks represent a healthy core installation."""
-        return all(check.status == "OK" for check in self.checks)
+        """Return whether no diagnostic reports a core/runtime error.
+
+        Missing optional integrations are expected in a minimal installation,
+        while ``INFO`` entries describe scope rather than health.
+        """
+        return all(check.status != "ERROR" for check in self.checks)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-compatible representation."""
